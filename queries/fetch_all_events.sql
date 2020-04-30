@@ -1,0 +1,1 @@
+SELECT * FROM event WHERE event_date>= date('now')

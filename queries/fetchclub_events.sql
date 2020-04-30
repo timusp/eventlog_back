@@ -1,0 +1,1 @@
+SELECT * FROM event WHERE clubId = 1
