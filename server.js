@@ -104,6 +104,21 @@ app.get("/api/myevents", (req, res, next) => {
     });
 });
 
+app.get("/api/addedevents", (req, res, next) => {
+  var sql = "SELECT * FROM event_details WHERE added_by in (SELECT organizer_id FROM organizer_details WHERE user_id in ("+req.query.user+"))";
+  var params = [];
+  db.all(sql, params, (err, rows) => {
+      if (err) {
+        res.status(400).json({"error":err.message});
+        return;
+      }
+      res.json({
+          "message":"success",
+          "data":rows
+      })
+    });
+});
+
 app.get("/api/regevents", (req, res, next) => {
   //console.log(req.query.user);
   var sql = "SELECT * FROM event_details WHERE event_id in (SELECT event_id FROM user_register_event_details WHERE user_id in ("+req.query.user+")) and event_date>= date(\'now\')";
@@ -139,7 +154,7 @@ app.get("/api/user/:id", (req, res, next) => {
 });
 
 app.get("/api/org_flag/:id", (req, res, next) => {
-  var sql = "select * from user where userid = ?"
+  var sql = "select * from user_details where user_id = ?"
   var params = [req.params.id]
   
   db.get(sql, params, (err, row) => {
@@ -153,6 +168,22 @@ app.get("/api/org_flag/:id", (req, res, next) => {
       })
     });
 });
+
+app.get("/api/gettoken",(req,res,next)=>{
+  var sql="select * from user_details where logged in (\"true\")"
+  db.get(sql,(err,row)=>{
+    if (err) {
+      res.status(400).json({"error":err.message});
+      return;
+    }
+    //if(row===undefined)
+    res.json({
+      "message":"success",
+      "user_id":row
+    })
+  })
+})
+
 
 app.post("/api/user/", (req, res, next) => {
   var errors=[]
@@ -173,7 +204,7 @@ app.post("/api/user/", (req, res, next) => {
       email: req.body.email
   }
   //console.log(data.name);
-  var sql ='INSERT INTO user (name, mailId) VALUES (?,?)'
+  var sql ='INSERT INTO user_details (name, user_mail_id) VALUES (?,?)'
   var params =[data.name, data.email]
   
   db.run(sql, params, function (err, result) {
@@ -191,27 +222,79 @@ app.post("/api/user/", (req, res, next) => {
 })
 
 
-app.post("/api/submitclub/", (req, res, next) => {
-  var errors=[]
 
-  console.log(req.body);
+app.post("/api/userauth/", (req, res, next) => {
+  
+console.log(req.body)
+  //console.log(req.body);
+  var sql ='select * from user_details where user_mail=\''+req.body.email+'\''
+  //console.log(sql)
+  response={user_id:0,isNew:false,isOrg:false}
+  
+  db.get(sql, function (err, result) {
+      if (err){
+          res.status(400).json({"error": err.message})
+          return;
+      }
+      if(result!=undefined){
+        console.log(result)
+        response.user_id=result.user_id
+        if(result.isOrganizer===0){response.isOrg=false}
+        else{response.isOrg=true}
+        db.get("select user_id from interested_club where user_id = "+response.user_id, (err, row) => {
+          if (err) {
+            res.status(400).json({"error":err.message});
+            return;
+          }
+          if(row===undefined){
+            response.isNew=true
+            var sql ='INSERT INTO interested_club (user_id, club_id) VALUES ('+item.cur_user+','+item.club_id+')'
+            db.get('INSERT INTO user_details (user_name, user_mail, isOrganizer, logged) VALUES ('+req.body.name+','+req.body.email+',0,true)', (err, row) => {
+              if (err) {
+                res.status(400).json({"error":err.message});
+                return;
+              }
+            });
+
+          }
+          res.json({
+            "message": "success",
+            "id" : response.user_id,
+            "isNew" : response.isNew,
+            "isOrg" : response.isOrg,
+          })        
+        });
+      }
+      
+  });
+  
+  
+  
+})
+
+app.post("/api/submitevent/", (req, res, next) => {
+  var errors=[]
+console.log(req.body)
+
+  //console.log(req.body);
   /*if (!req.body.name){
     errors.push("No name specified");
   }
   if (!req.body.email){
     errors.push("No email specified");
   }*/
+  /*
   if (errors.length){
       res.status(400).json({"error":errors.join(",")});
       return;
   }
   var data = req.body;
   
-  /*data.map((item)=>{
+  data.map((item)=>{
     var sql ='INSERT INTO interested_club (user_id, club_id) VALUES (?,?)'
     var params =[item.cur_user, item.club_id]
-*/
-   /* db.run(sql, params, function (err, result) {
+
+    db.run(sql, params, function (err, result) {
         if (err){
             res.status(400).json({"error": err.message})
             console.log("error"+ err.message);
@@ -226,8 +309,35 @@ app.post("/api/submitclub/", (req, res, next) => {
     "data": data,
     "id" : this.lastID
   })
-    */
+    
+  */
+})
+
+app.post("/api/submitclub/", (req, res, next) => {
   
+  req.body.map((item)=>{
+
+    var sql ='INSERT INTO interested_club (user_id, club_id) VALUES ('+item.cur_user+','+item.club_id+')'
+    errflag=false
+    db.run(sql,function (err, result) {
+      if (err){
+            //res.status(400).json({"error": err.message})
+            //console.log("error"+ err.message);
+            errflag=true
+            return;
+          }
+          
+    });
+  })
+  if(errflag){
+    res.status(400).json({"error": err.message})
+    console.log("error"+ err.message);
+  }
+  else{
+    res.json({
+      "message": "success",
+    })
+  }
 })
 
 
