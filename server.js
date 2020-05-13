@@ -89,6 +89,25 @@ app.get("/api/getclubs", (req, res, next) => {
     });
 });
 
+app.post("/api/eventregister", (req, res, next) => {
+  
+  //console.log(req.body)
+
+  var sql = 'INSERT INTO user_register_event_details (user_id,event_id) VALUES ('+req.body.user_id+','+req.body.event_id+')'
+  var params = []
+  db.all(sql, params, (err, rows) => {
+      if (err) {
+        res.status(400).json({"error":err.message});
+        return;
+      }
+      res.json({
+          "message":"success",
+          "data":rows
+      })
+    });
+    
+});
+
 app.get("/api/myevents", (req, res, next) => {
   var sql = "SELECT * FROM event_details WHERE club_id in (SELECT club_id FROM interested_club WHERE user_id in ("+req.query.user+")) and event_date >= date(\'now\')";
   var params = [];
@@ -153,36 +172,6 @@ app.get("/api/user/:id", (req, res, next) => {
       });
 });
 
-app.get("/api/org_flag/:id", (req, res, next) => {
-  var sql = "select * from user_details where user_id = ?"
-  var params = [req.params.id]
-  
-  db.get(sql, params, (err, row) => {
-      if (err) {
-        res.status(400).json({"error":err.message});
-        return;
-      }
-      res.json({
-          "message":"success",
-          "data":row
-      })
-    });
-});
-
-app.get("/api/gettoken",(req,res,next)=>{
-  var sql="select * from user_details where logged in (\"true\")"
-  db.get(sql,(err,row)=>{
-    if (err) {
-      res.status(400).json({"error":err.message});
-      return;
-    }
-    //if(row===undefined)
-    res.json({
-      "message":"success",
-      "user_id":row
-    })
-  })
-})
 
 
 app.post("/api/user/", (req, res, next) => {
