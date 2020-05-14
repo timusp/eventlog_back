@@ -103,6 +103,21 @@ app.get("/api/getinterest", (req, res, next) => {
     });
 });
 
+app.get("/api/eventdelete", (req, res, next) => {
+  console.log(req.query)
+  var sql = "UPDATE event_details SET is_deleted = true where event_id="+req.query.event_id
+  db.all(sql,(err, rows) => {
+      if (err) {
+        res.status(400).json({"error":err.message});
+        return;
+      }
+      res.json({
+          "message":"success",
+          "data":rows
+      })
+    });
+});
+
 app.post("/api/getregs", (req, res, next) => {
   var sql = "select * from (select event_id from user_register_event_details where user_id = "+req.body.user_id+") where event_id = "+req.body.event_id
   var reg;
@@ -125,7 +140,6 @@ app.post("/api/eventregister", (req, res, next) => {
   //console.log(req.body)
 
   var sql = 'INSERT INTO user_register_event_details (user_id,event_id) VALUES ('+req.body.user_id+','+req.body.event_id+')'
-  console.log(sql)
   var params = []
   db.all(sql, params, (err, rows) => {
       if (err) {
