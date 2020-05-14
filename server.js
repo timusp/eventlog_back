@@ -43,7 +43,21 @@ app.get("/api/users", (req, res, next) => {
 });
 
 app.get("/api/allevents", (req, res, next) => {
-  var sql = "select * from event_details"
+  var sql = "select * from event"
+  var params = []
+  db.all(sql, params, (err, rows) => {
+      if (err) {
+        res.status(400).json({"error":err.message});
+        return;
+      }
+      res.json({
+          "message":"success",
+          "data":rows
+      })
+    });
+});
+app.get("/api/getclubname", (req, res, next) => {
+  var sql = "select club_name from club where club_id="+req.body.club_id
   var params = []
   db.all(sql, params, (err, rows) => {
       if (err) {
@@ -58,7 +72,7 @@ app.get("/api/allevents", (req, res, next) => {
 });
 
 app.get("/api/allevents/:id", (req, res, next) => {
-  var sql = "select * from event_details where event_id = ?"
+  var sql = "select * from event where event_id = ?"
   var params = [req.params.id]
   
   db.get(sql, params, (err, row) => {
@@ -75,7 +89,7 @@ app.get("/api/allevents/:id", (req, res, next) => {
 
 
 app.get("/api/getclubs", (req, res, next) => {
-  var sql = "select club_id,club_name from club_details"
+  var sql = "select club_id,club_name from club"
   var params = []
   db.all(sql, params, (err, rows) => {
       if (err) {
@@ -104,8 +118,21 @@ app.get("/api/getinterest", (req, res, next) => {
 });
 
 app.get("/api/eventdelete", (req, res, next) => {
-  console.log(req.query)
-  var sql = "UPDATE event_details SET is_deleted = true where event_id="+req.query.event_id
+  var sql = "UPDATE event SET is_deleted = true where event_id="+req.query.event_id
+  db.all(sql,(err, rows) => {
+      if (err) {
+        res.status(400).json({"error":err.message});
+        return;
+      }
+      res.json({
+          "message":"success",
+          "data":rows
+      })
+    });
+});
+
+app.get("/api/getclublogo", (req, res, next) => {
+  var sql = "select club_logo from club where club_id="+req.query.club_id
   db.all(sql,(err, rows) => {
       if (err) {
         res.status(400).json({"error":err.message});
@@ -119,7 +146,7 @@ app.get("/api/eventdelete", (req, res, next) => {
 });
 
 app.post("/api/getregs", (req, res, next) => {
-  var sql = "select * from (select event_id from user_register_event_details where user_id = "+req.body.user_id+") where event_id = "+req.body.event_id
+  var sql = "select * from (select event_id from registration where user_id = "+req.body.user_id+") where event_id = "+req.body.event_id
   var reg;
   db.all(sql, (err, rows) => {
       if(err){
@@ -136,13 +163,10 @@ app.post("/api/getregs", (req, res, next) => {
 
 
 app.post("/api/eventregister", (req, res, next) => {
-  
-  //console.log(req.body)
-
-  var sql = 'INSERT INTO user_register_event_details (user_id,event_id) VALUES ('+req.body.user_id+','+req.body.event_id+')'
-  var params = []
-  db.all(sql, params, (err, rows) => {
+  var sql = 'INSERT INTO registration (user_id,event_id) VALUES ('+req.body.user_id+','+req.body.event_id+')'
+  db.all(sql, (err, rows) => {
       if (err) {
+        console.log(err.message)
         res.status(400).json({"error":err.message});
         return;
       }
@@ -155,11 +179,7 @@ app.post("/api/eventregister", (req, res, next) => {
 });
 
 app.post("/api/unregister", (req, res, next) => {
-  
-  //console.log(req.body)
-
-  var sql = 'delete from user_register_event_details where user_id='+req.body.user_id+' and event_id='+req.body.event_id
-  console.log(sql)
+  var sql = 'delete from registration where user_id='+req.body.user_id+' and event_id='+req.body.event_id
   var params = []
   db.all(sql, params, (err, rows) => {
       if (err) {
@@ -175,7 +195,7 @@ app.post("/api/unregister", (req, res, next) => {
 });
 
 app.get("/api/myevents", (req, res, next) => {
-  var sql = "SELECT * FROM event_details WHERE club_id in (SELECT club_id FROM interested_club WHERE user_id in ("+req.query.user+")) and start_date >= date(\'now\')";
+  var sql = "SELECT * FROM event WHERE club_id in (SELECT club_id FROM interested_club WHERE user_id in ("+req.query.user_id+")) and start_date >= date(\'now\')";
   var params = [];
   db.all(sql, params, (err, rows) => {
       if (err) {
@@ -190,7 +210,7 @@ app.get("/api/myevents", (req, res, next) => {
 });
 
 app.get("/api/addedevents", (req, res, next) => {
-  var sql = "SELECT * FROM event_details WHERE added_by in (SELECT organizer_id FROM organizer_details WHERE user_id in ("+req.query.user+"))";
+  var sql = "SELECT * FROM event WHERE added_by ="+req.query.user_id;
   var params = [];
   db.all(sql, params, (err, rows) => {
       if (err) {
@@ -206,11 +226,11 @@ app.get("/api/addedevents", (req, res, next) => {
 
 app.get("/api/regevents", (req, res, next) => {
   //console.log(req.query.user);
-  var sql = "SELECT * FROM event_details WHERE event_id in (SELECT event_id FROM user_register_event_details WHERE user_id in ("+req.query.user+")) and start_date>= date(\'now\')";
-  //console.log(sql)
+  var sql = "SELECT * FROM event WHERE event_id in (SELECT event_id FROM registration WHERE user_id in ("+req.query.user_id+")) and start_date>= date(\'now\')";
   var params = []
   db.all(sql, params, (err, rows) => {
       if (err) {
+        console.log(err.message)
         res.status(400).json({"error":err.message});
         return;
       }
@@ -223,9 +243,8 @@ app.get("/api/regevents", (req, res, next) => {
 
 
 app.get("/api/user/:id", (req, res, next) => {
-    var sql = "select * from user where userid = ?"
+    var sql = "select * from user where user_id = ?"
     var params = [req.params.id]
-    
     db.get(sql, params, (err, row) => {
         if (err) {
           res.status(400).json({"error":err.message});
@@ -259,7 +278,7 @@ app.post("/api/user/", (req, res, next) => {
       email: req.body.email
   }
   //console.log(data.name);
-  var sql ='INSERT INTO user_details (name, user_mail_id) VALUES (?,?)'
+  var sql ='INSERT INTO user (user_name, user_mail) VALUES (?,?)'
   var params =[data.name, data.email]
   
   db.run(sql, params, function (err, result) {
@@ -280,8 +299,8 @@ app.post("/api/user/", (req, res, next) => {
 
 app.post("/api/userauth/", (req, res, next) => {
   
-  var sql ='select * from user_details where user_mail=\''+req.body.email+'\''
-  response={user_id:0,isNew:false,isOrg:false}
+  var sql ='select * from user where user_mail=\''+req.body.user_mail+'\''
+  response={user_id:0,is_new:false,is_org:false}
   
   db.get(sql, function (err, result) {
       if (err){
@@ -290,17 +309,17 @@ app.post("/api/userauth/", (req, res, next) => {
       }
       if(result!=undefined){
         response.user_id=result.user_id
-        if(result.isOrganizer===0){response.isOrg=false}
-        else{response.isOrg=true}
+        if(result.is_organizer===0){response.is_org=false}
+        else{response.is_org=true}
         db.get("select user_id from interested_club where user_id = "+response.user_id, (err, row) => {
           if (err) {
             res.status(400).json({"error":err.message});
             return;
           }
           if(row===undefined){
-            response.isNew=true
+            response.is_new=true
             var sql ='INSERT INTO interested_club (user_id, club_id) VALUES ('+item.cur_user+','+item.club_id+')'
-            db.get('INSERT INTO user_details (user_name, user_mail, isOrganizer, logged) VALUES ('+req.body.name+','+req.body.email+',0,true)', (err, row) => {
+            db.get('INSERT INTO user (user_name, user_mail, is_organizer) VALUES ('+req.body.name+','+req.body.email+',0)', (err, row) => {
               if (err) {
                 res.status(400).json({"error":err.message});
                 return;
@@ -311,8 +330,8 @@ app.post("/api/userauth/", (req, res, next) => {
           res.json({
             "message": "success",
             "id" : response.user_id,
-            "isNew" : response.isNew,
-            "isOrg" : response.isOrg,
+            "is_new" : response.is_new,
+            "is_org" : response.is_org,
           })        
         });
       }
@@ -324,10 +343,12 @@ app.post("/api/userauth/", (req, res, next) => {
 })
 
 app.post("/api/submitevent/", (req, res, next) => {
-  var errors=[]
-  //console.log(req.body)
+  console.log(req.body)
+  db.run("delete from event where event_id="+req.body.event_id,function (err, result) {
+    
+  })
 
-  var sql="INSERT INTO event_details (club_id,event_name,start_date,end_date,event_time,event_venue,event_type,event_desc,event_poster,event_reg_link,event_paid,event_reg_deadline,added_by,is_deleted) VALUES ("+req.body.club+",\""+req.body.name+"\",\""+req.body.start_date+"\",\""+req.body.end_date+"\",\""+req.body.time+"\",\""+req.body.venue+"\",\""+req.body.type+"\",\""+req.body.desc+"\",\""+req.body.poster+"\",\""+req.body.link+"\","+req.body.paid+",\""+req.body.deadline+"\","+req.body.added_by+","+req.body.isDeleted+")"
+  var sql="INSERT INTO event (club_id,event_name,start_date,end_date,event_time,event_venue,event_type,event_desc,event_poster,event_link,event_paid,event_deadline,added_by,modification_date,is_deleted) VALUES ("+req.body.club_id+",\""+req.body.event_name+"\",\""+req.body.start_date+"\",\""+req.body.end_date+"\",\""+req.body.event_time+"\",\""+req.body.event_venue+"\",\""+req.body.event_type+"\",\""+req.body.event_desc+"\",\""+req.body.event_poster+"\",\""+req.body.event_link+"\","+req.body.event_paid+",\""+req.body.event_deadline+"\","+req.body.added_by+","+req.body.modification_date+","+req.body.is_deleted+")"
   db.run(sql,function (err, result) {
       if (err){
           res.status(400).json({"error": err.message})
@@ -343,7 +364,7 @@ app.post("/api/submitevent/", (req, res, next) => {
 })
 
 app.post("/api/submitclub/", (req, res, next) => {
-  var sql ='delete from interested_club where user_id='+req.body[0].cur_user
+  var sql ='delete from interested_club where user_id='+req.body[0].user_id
   db.run(sql,function (err, result) {
     if(err){
           //res.status(400).json({"error": err.message})
@@ -354,7 +375,7 @@ app.post("/api/submitclub/", (req, res, next) => {
   });
 
   req.body.map((item)=>{
-    var sql ='INSERT INTO interested_club (user_id, club_id) VALUES ('+item.cur_user+','+item.club_id+')'
+    var sql ='INSERT INTO interested_club (user_id, club_id) VALUES ('+item.user_id+','+item.club_id+')'
     errflag=false
     db.run(sql,function (err, result) {
       if(err){
