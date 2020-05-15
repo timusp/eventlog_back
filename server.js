@@ -318,10 +318,9 @@ app.post("/api/userauth/", (req, res, next) => {
           }
           if(row===undefined){
             response.is_new=true
-            var sql ='INSERT INTO interested_club (user_id, club_id) VALUES ('+item.cur_user+','+item.club_id+')'
             db.get('INSERT INTO user (user_name, user_mail, is_organizer) VALUES ('+req.body.name+','+req.body.email+',0)', (err, row) => {
               if (err) {
-                res.status(400).json({"error":err.message});
+                //res.status(400).json({"error":err.message});
                 return;
               }
             });
@@ -334,6 +333,36 @@ app.post("/api/userauth/", (req, res, next) => {
             "is_org" : response.is_org,
           })        
         });
+      }
+      else{
+        response.is_new=true
+        response.is_org=false
+        var sql='INSERT INTO user (user_name, user_mail, is_organizer) VALUES (\''+req.body.name+'\',\''+req.body.user_mail+'\',0)';
+        db.all(sql, (err, row) => {
+          if (err) {
+            res.status(400).json({"error":err.message});
+            return;
+          }else{
+            
+          }
+        });
+        var sql2='select * from user where user_mail=\''+req.body.user_mail+'\''
+        db.get(sql2,function (err, result){
+          if (err){
+            res.status(400).json({"error": err.message})
+            return;
+          }
+          else{
+            response.user_id=result.user_id
+            res.json({
+              "message": "success",
+              "id" : response.user_id,
+              "is_new" : response.is_new,
+              "is_org" : response.is_org,
+            }) 
+          }
+        });
+        
       }
       
   });
