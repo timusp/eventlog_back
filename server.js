@@ -71,6 +71,22 @@ app.get("/api/getclubname", (req, res, next) => {
     });
 });
 
+app.get("/api/regs", (req, res, next) => {
+  var count=0;
+  var sql = "select * from registration where event_id="+req.query.event_id
+  db.all(sql, (err, rows) => {
+      if (err) {
+        res.status(400).json({"error":err.message});
+        return;
+      }
+      rows.map(item=>{count=count+1})
+      res.json({
+          "message":"success",
+          "count":count
+      })
+    });
+});
+
 app.get("/api/allevents/:id", (req, res, next) => {
   var sql = "select * from event where event_id = ?"
   var params = [req.params.id]
@@ -226,7 +242,7 @@ app.get("/api/addedevents", (req, res, next) => {
 
 app.get("/api/regevents", (req, res, next) => {
   //console.log(req.query.user);
-  var sql = "SELECT * FROM event WHERE event_id in (SELECT event_id FROM registration WHERE user_id in ("+req.query.user_id+")) and start_date>= date(\'now\')";
+  var sql = "SELECT * FROM event WHERE event_id in (SELECT event_id FROM registration WHERE user_id in ("+req.query.user_id+"))";
   var params = []
   db.all(sql, params, (err, rows) => {
       if (err) {
@@ -311,7 +327,7 @@ app.post("/api/userauth/", (req, res, next) => {
         response.user_id=result.user_id
         if(result.is_organizer===0){response.is_org=false}
         else{response.is_org=true}
-        db.get("select user_id from interested_club where user_id = "+response.user_id, (err, row) => {
+        db.get("select user_id from interested_club where user_id = "+result.user_id, (err, row) => {
           if (err) {
             res.status(400).json({"error":err.message});
             return;
@@ -371,13 +387,17 @@ app.post("/api/userauth/", (req, res, next) => {
   
 })
 
+
+
+
 app.post("/api/submitevent/", (req, res, next) => {
   console.log(req.body)
-  db.run("delete from event where event_id="+req.body.event_id,function (err, result) {
-    
+  db.run('delete from event where event_name=\''+req.body.event_name+'\'',function (err, result) {
+  
   })
 
-  var sql="INSERT INTO event (club_id,event_name,start_date,end_date,event_time,event_venue,event_type,event_desc,event_poster,event_link,event_paid,event_deadline,added_by,modification_date,is_deleted) VALUES ("+req.body.club_id+",\""+req.body.event_name+"\",\""+req.body.start_date+"\",\""+req.body.end_date+"\",\""+req.body.event_time+"\",\""+req.body.event_venue+"\",\""+req.body.event_type+"\",\""+req.body.event_desc+"\",\""+req.body.event_poster+"\",\""+req.body.event_link+"\","+req.body.event_paid+",\""+req.body.event_deadline+"\","+req.body.added_by+","+req.body.modification_date+","+req.body.is_deleted+")"
+  var sql="INSERT INTO event (start_date,club_id,event_name,start_date,end_date,event_time,event_venue,event_type,event_desc,event_poster,event_link,event_paid,event_deadline,added_by,modification_date,is_deleted,is_modified,event_seat) VALUES ('15/4/2020',"+req.body.club_id+",\""+req.body.event_name+"\",\""+req.body.start_date+"\",\""+req.body.end_date+"\",\""+req.body.event_time+"\",\""+req.body.event_venue+"\",\""+req.body.event_type+"\",\""+req.body.event_desc+"\",\""+req.body.event_poster+"\",\""+req.body.event_link+"\","+req.body.event_paid+",\""+req.body.event_deadline+"\","+req.body.added_by+","+'15/4/2020'+","+req.body.is_deleted+","+true+","+req.body.event_seats+")"
+  console.log(sql)
   db.run(sql,function (err, result) {
       if (err){
           res.status(400).json({"error": err.message})
